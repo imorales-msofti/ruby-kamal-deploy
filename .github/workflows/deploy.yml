@@ -50,22 +50,28 @@ jobs:
         run: |
           # Read servers from secret (space or newline separated)
           SERVERS="${{ secrets.EC2_HOSTS }}"
-          
-          # Remove old servers section and add new one
-          sed -i '/^servers:/,/^[^ ]/{ /^servers:/!{ /^[^ ]/!d; }; }' config/deploy.yml
-          
-          # Add new servers section
+
+          # Backup original file
+          cp config/deploy.yml config/deploy.yml.bak
+
+          # Extract everything before servers section
+          sed -n '1,/^servers:/p' config/deploy.yml | sed '$d' > config/deploy.yml.tmp
+
+          # Add servers section
           echo "servers:" >> config/deploy.yml.tmp
           echo "  web:" >> config/deploy.yml.tmp
           for server in $SERVERS; do
             echo "  - $server" >> config/deploy.yml.tmp
           done
-          
-          # Append rest of config
+          echo "" >> config/deploy.yml.tmp
+
+          # Add everything after servers section
           sed -n '/^registry:/,$p' config/deploy.yml >> config/deploy.yml.tmp
+
+          # Replace original
           mv config/deploy.yml.tmp config/deploy.yml
-          
-          echo "Updated deploy.yml with servers:"
+
+          echo "Updated deploy.yml:"
           cat config/deploy.yml
 
       - name: Install Docker on all servers
