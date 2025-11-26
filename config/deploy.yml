@@ -17,7 +17,6 @@ env:
 
 builder:
   arch: amd64
-  remote: true  # Build on the server instead of locally
 
 ssh:
   user: ubuntu
