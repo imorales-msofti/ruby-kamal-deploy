@@ -34,8 +34,10 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/kamal-server-key.pem
           chmod 600 ~/.ssh/kamal-server-key.pem
 
-      - name: Get ECR password
-        run: echo "KAMAL_REGISTRY_PASSWORD=$(aws ecr get-login-password --region us-east-1)" >> $GITHUB_ENV
+      - name: Setup master key
+        run: echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
 
       - name: Deploy with Kamal
+        env:
+          KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
         run: kamal deploy
