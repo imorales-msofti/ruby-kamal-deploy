@@ -46,14 +46,36 @@ jobs:
       - name: Setup master key
         run: echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
 
-      - name: Update deploy.yml with EC2 host
+      - name: Update deploy.yml with EC2 hosts
         run: |
-          sed -i "/servers:/,/web:/{ n; s/- .*/    - ${{ secrets.EC2_HOST }}/; }" config/deploy.yml
+          # Read servers from secret (space or newline separated)
+          SERVERS="${{ secrets.EC2_HOSTS }}"
+          
+          # Remove old servers section and add new one
+          sed -i '/^servers:/,/^[^ ]/{ /^servers:/!{ /^[^ ]/!d; }; }' config/deploy.yml
+          
+          # Add new servers section
+          echo "servers:" >> config/deploy.yml.tmp
+          echo "  web:" >> config/deploy.yml.tmp
+          for server in $SERVERS; do
+            echo "  - $server" >> config/deploy.yml.tmp
+          done
+          
+          # Append rest of config
+          sed -n '/^registry:/,$p' config/deploy.yml >> config/deploy.yml.tmp
+          mv config/deploy.yml.tmp config/deploy.yml
+          
+          echo "Updated deploy.yml with servers:"
+          cat config/deploy.yml
 
-      - name: Install Docker on server
+      - name: Install Docker on all servers
         run: |
-          ssh -i ~/.ssh/kamal-server-key.pem ubuntu@${{ secrets.EC2_HOST }} \
-            "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu"
+          SERVERS="${{ secrets.EC2_HOSTS }}"
+          for server in $SERVERS; do
+            echo "Installing Docker on $server..."
+            ssh -i ~/.ssh/kamal-server-key.pem ubuntu@$server \
+              "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu && sudo systemctl restart docker && sudo chmod 666 /var/run/docker.sock" || true
+          done
 
       - name: Deploy with Kamal
         env:
