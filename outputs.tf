@@ -1,21 +1,26 @@
-output "instance_hostname" {
-  description = "Private DNS name of the EC2 Instance"
-  value       = aws_instance.app_server.private_dns
+output "instance_hostnames" {
+  description = "Private DNS names of all EC2 Instances"
+  value       = aws_instance.app_server[*].private_dns
 }
 
-output "instance_public_ip" {
-  description = "Public IP address of the EC2 Instance"
-  value       = aws_instance.app_server.public_ip
+output "instance_public_ips" {
+  description = "Public IP addresses of all EC2 Instances"
+  value       = aws_instance.app_server[*].public_ip
 }
 
-output "instance_public_dns" {
-  description = "Public DNS name of the EC2 Instance"
-  value       = aws_instance.app_server.public_dns
+output "instance_public_dns_list" {
+  description = "Public DNS names of all EC2 Instances"
+  value       = aws_instance.app_server[*].public_dns
 }
 
-output "ssh_connection_command" {
-  description = "SSH command to connect to the instance"
-  value       = "ssh -i ~/.ssh/kamal-server-key.pem ubuntu@${aws_instance.app_server.public_dns}"
+output "instance_public_dns_yaml" {
+  description = "Public DNS names formatted for Kamal deploy.yml"
+  value       = join("\n    - ", aws_instance.app_server[*].public_dns)
+}
+
+output "ssh_connection_commands" {
+  description = "SSH commands to connect to each instance"
+  value       = [for instance in aws_instance.app_server : "ssh -i ~/.ssh/kamal-server-key.pem ubuntu@${instance.public_dns}"]
 }
 
 output "ecr_repository_url" {

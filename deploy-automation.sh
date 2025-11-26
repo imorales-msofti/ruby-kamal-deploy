@@ -21,7 +21,7 @@ sleep 30
 # Install and configure Docker
 echo "▶ Installing Docker..."
 ssh -i ~/.ssh/kamal-server-key.pem -o StrictHostKeyChecking=no ubuntu@$EC2_HOST \
-    "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu && sudo systemctl restart docker"
+    "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu && sudo systemctl restart docker && sudo chmod 666 /var/run/docker.sock"
 
 # Update deploy.yml
 echo "▶ Updating deploy.yml..."
