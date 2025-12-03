@@ -19,9 +19,6 @@ env:
 
 builder:
   arch: amd64
-  cache:
-    type: registry
-    options: mode=max
 
 ssh:
   user: ubuntu
