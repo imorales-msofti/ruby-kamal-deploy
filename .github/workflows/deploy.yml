@@ -63,6 +63,7 @@ jobs:
       - name: Setup master key
         run: |
           if [[ "${{ steps.detect-env.outputs.environment }}" == "staging" ]]; then
+            mkdir -p config/credentials
             echo "${{ secrets.RAILS_MASTER_KEY }}" > config/credentials/staging.key
           else
             echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
