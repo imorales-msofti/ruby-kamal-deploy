@@ -1,0 +1,11 @@
+# Production environment specific configuration
+# This file is merged with config/deploy.yml
+
+servers:
+  web:
+    - ec2-34-232-64-233.compute-1.amazonaws.com
+    - ec2-98-84-21-135.compute-1.amazonaws.com
+
+env:
+  clear:
+    RAILS_ENV: production

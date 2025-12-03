@@ -2,13 +2,27 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: 
+      - main
+      - stage
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Detect environment
+        id: detect-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "config_file=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/stage" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "config_file=staging" >> $GITHUB_OUTPUT
+          fi
+          echo "Deploying to: ${{ github.ref }} -> environment"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -44,39 +58,56 @@ jobs:
           EOF
 
       - name: Setup master key
-        run: echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
-
-      - name: Update deploy.yml with EC2 hosts
         run: |
-          # Read servers from secret (space or newline separated)
-          SERVERS="${{ secrets.EC2_HOSTS }}"
+          if [[ "${{ steps.detect-env.outputs.environment }}" == "staging" ]]; then
+            echo "${{ secrets.RAILS_MASTER_KEY_STAGING }}" > config/credentials/staging.key
+          else
+            echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
+          fi
 
-          # Backup original file
-          cp config/deploy.yml config/deploy.yml.bak
+      - name: Select servers based on environment
+        id: select-servers
+        run: |
+          if [[ "${{ steps.detect-env.outputs.environment }}" == "staging" ]]; then
+            echo "servers=${{ secrets.EC2_HOSTS_STAGING }}" >> $GITHUB_OUTPUT
+            echo "Deploying to STAGING servers"
+          else
+            echo "servers=${{ secrets.EC2_HOSTS_PRODUCTION }}" >> $GITHUB_OUTPUT
+            echo "Deploying to PRODUCTION servers"
+          fi
 
-          # Extract everything before servers section
-          sed -n '1,/^servers:/p' config/deploy.yml | sed '$d' > config/deploy.yml.tmp
+      - name: Update deploy config with EC2 hosts
+        run: |
+          ENV="${{ steps.detect-env.outputs.environment }}"
+          SERVERS="${{ steps.select-servers.outputs.servers }}"
+          CONFIG_FILE="config/deploy.${{ steps.detect-env.outputs.config_file }}.yml"
 
-          # Add servers section
-          echo "servers:" >> config/deploy.yml.tmp
-          echo "  web:" >> config/deploy.yml.tmp
+          
+          # Update environment-specific config file
+          echo "Updating $CONFIG_FILE with servers..."
+          
+          # Create servers section
+          echo "servers:" > ${CONFIG_FILE}.tmp
+          echo "  web:" >> ${CONFIG_FILE}.tmp
           for server in $SERVERS; do
-            echo "  - $server" >> config/deploy.yml.tmp
+            echo "  - $server" >> ${CONFIG_FILE}.tmp
           done
-          echo "" >> config/deploy.yml.tmp
-
-          # Add everything after servers section
-          sed -n '/^registry:/,$p' config/deploy.yml >> config/deploy.yml.tmp
-
-          # Replace original
-          mv config/deploy.yml.tmp config/deploy.yml
-
-          echo "Updated deploy.yml:"
-          cat config/deploy.yml
+          echo "" >> ${CONFIG_FILE}.tmp
+          
+          # Add env section
+          echo "env:" >> ${CONFIG_FILE}.tmp
+          echo "  clear:" >> ${CONFIG_FILE}.tmp
+          echo "    RAILS_ENV: $ENV" >> ${CONFIG_FILE}.tmp
+          
+          # Replace file
+          mv ${CONFIG_FILE}.tmp $CONFIG_FILE
+          
+          echo "Updated $CONFIG_FILE:"
+          cat $CONFIG_FILE
 
       - name: Check and install Docker on servers (if needed)
         run: |
-          SERVERS="${{ secrets.EC2_HOSTS }}"
+          SERVERS="${{ steps.select-servers.outputs.servers }}"
           for server in $SERVERS; do
             echo "Checking Docker on $server..."
             if ! ssh -i ~/.ssh/kamal-server-key.pem ubuntu@$server "docker --version" 2>/dev/null; then
@@ -91,4 +122,6 @@ jobs:
       - name: Deploy with Kamal
         env:
           KAMAL_REGISTRY_PASSWORD: ${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}
-        run: kamal deploy
+        run: |
+          echo "Deploying to ${{ steps.detect-env.outputs.environment }} environment..."
+          kamal deploy -d ${{ steps.detect-env.outputs.config_file }}

@@ -15,7 +15,7 @@ registry:
 
 env:
   clear:
-    RAILS_ENV: development
+    RAILS_ENV: production
 
 builder:
   arch: amd64
