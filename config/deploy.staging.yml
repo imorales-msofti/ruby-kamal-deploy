@@ -3,7 +3,7 @@
 
 servers:
   web:
-    - ec2-35-170-75-130.compute-1.amazonaws.com
+    - ec2-34-226-234-69.compute-1.amazonaws.com
 
 env:
   clear:

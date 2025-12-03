@@ -3,9 +3,11 @@
 
 servers:
   web:
-    - ec2-34-232-64-233.compute-1.amazonaws.com
-    - ec2-98-84-21-135.compute-1.amazonaws.com
+    - ec2-98-93-202-251.compute-1.amazonaws.com
+    - ec2-3-236-235-204.compute-1.amazonaws.com
 
 env:
   clear:
     RAILS_ENV: production
+  secret:
+    - SECRET_KEY_BASE
