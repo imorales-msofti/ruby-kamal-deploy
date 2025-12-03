@@ -120,9 +120,12 @@ jobs:
             fi
           done
 
+      - name: Setup Kamal secrets
+        run: |
+          mkdir -p .kamal
+          echo "KAMAL_REGISTRY_PASSWORD=${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}" > .kamal/secrets-common
+
       - name: Deploy with Kamal
-        env:
-          KAMAL_REGISTRY_PASSWORD: ${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}
         run: |
           echo "Deploying to ${{ steps.detect-env.outputs.environment }} environment..."
           kamal deploy -d ${{ steps.detect-env.outputs.config_file }}
