@@ -9,6 +9,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+      url: ${{ github.ref == 'refs/heads/main' && 'http://ec2-98-93-202-251.compute-1.amazonaws.com' || 'http://ec2-34-226-234-69.compute-1.amazonaws.com' }}
 
     steps:
       - name: Detect environment
@@ -60,7 +63,7 @@ jobs:
       - name: Setup master key
         run: |
           if [[ "${{ steps.detect-env.outputs.environment }}" == "staging" ]]; then
-            echo "${{ secrets.RAILS_MASTER_KEY_STAGING }}" > config/credentials/staging.key
+            echo "${{ secrets.RAILS_MASTER_KEY }}" > config/credentials/staging.key
           else
             echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
           fi
@@ -68,13 +71,8 @@ jobs:
       - name: Select servers based on environment
         id: select-servers
         run: |
-          if [[ "${{ steps.detect-env.outputs.environment }}" == "staging" ]]; then
-            echo "servers=${{ secrets.EC2_HOSTS_STAGING }}" >> $GITHUB_OUTPUT
-            echo "Deploying to STAGING servers"
-          else
-            echo "servers=${{ secrets.EC2_HOSTS_PRODUCTION }}" >> $GITHUB_OUTPUT
-            echo "Deploying to PRODUCTION servers"
-          fi
+          echo "servers=${{ secrets.EC2_HOSTS }}" >> $GITHUB_OUTPUT
+          echo "Deploying to servers: ${{ secrets.EC2_HOSTS }}"
 
       - name: Update deploy config with EC2 hosts
         run: |
@@ -98,6 +96,8 @@ jobs:
           echo "env:" >> ${CONFIG_FILE}.tmp
           echo "  clear:" >> ${CONFIG_FILE}.tmp
           echo "    RAILS_ENV: $ENV" >> ${CONFIG_FILE}.tmp
+          echo "  secret:" >> ${CONFIG_FILE}.tmp
+          echo "    - SECRET_KEY_BASE" >> ${CONFIG_FILE}.tmp
           
           # Replace file
           mv ${CONFIG_FILE}.tmp $CONFIG_FILE
