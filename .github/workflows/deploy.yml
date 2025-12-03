@@ -124,7 +124,6 @@ jobs:
         run: |
           mkdir -p .kamal
           echo "KAMAL_REGISTRY_PASSWORD=${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}" > .kamal/secrets-common
-          echo "SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}" >> .kamal/secrets-common
 
       - name: Deploy with Kamal
         run: |
