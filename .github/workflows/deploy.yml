@@ -19,7 +19,7 @@ jobs:
           bundler-cache: true
 
       - name: Install Kamal
-        run: gem install kamal
+        run: gem install kamal --no-document
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,13 +74,18 @@ jobs:
           echo "Updated deploy.yml:"
           cat config/deploy.yml
 
-      - name: Install Docker on all servers
+      - name: Check and install Docker on servers (if needed)
         run: |
           SERVERS="${{ secrets.EC2_HOSTS }}"
           for server in $SERVERS; do
-            echo "Installing Docker on $server..."
-            ssh -i ~/.ssh/kamal-server-key.pem ubuntu@$server \
-              "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu && sudo systemctl restart docker && sudo chmod 666 /var/run/docker.sock" || true
+            echo "Checking Docker on $server..."
+            if ! ssh -i ~/.ssh/kamal-server-key.pem ubuntu@$server "docker --version" 2>/dev/null; then
+              echo "Installing Docker on $server..."
+              ssh -i ~/.ssh/kamal-server-key.pem ubuntu@$server \
+                "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu && sudo systemctl restart docker && sudo chmod 666 /var/run/docker.sock"
+            else
+              echo "Docker already installed on $server"
+            fi
           done
 
       - name: Deploy with Kamal
