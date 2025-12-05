@@ -94,3 +94,6 @@ build-iPhoneSimulator/
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate*
+.kamal/secrets*
+
+/config/credentials/staging.key
