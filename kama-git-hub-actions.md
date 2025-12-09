@@ -62,21 +62,15 @@ The workflow executes the following steps:
   
 
 2. **Setup Ruby** (`ruby/setup-ruby@v1`)
-
    - Installs Ruby version from `.ruby-version`
-
    - Caches bundler dependencies
-
   
 
 3. **Install Kamal**
 
 ```yaml
-
 - name: Install Kamal
-
   run: gem install kamal
-
 ```
 
   
@@ -86,35 +80,23 @@ The workflow executes the following steps:
    - Sets up AWS access using secrets
 
 ```yaml
-
 - name: Configure AWS credentials
-
   uses: aws-actions/configure-aws-credentials@v4
-
   with:
-
     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-
     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
     aws-region: us-east-1
-
 ```
 
   
 
 5. **Login to Amazon ECR** (`aws-actions/amazon-ecr-login@v2`)
-
    - Authenticates with ECR for Docker operations
-
 ```yaml
 
 - name: Login to Amazon ECR
-
   id: login-ecr
-
   uses: aws-actions/amazon-ecr-login@v2
-
 ```
 
   
@@ -128,13 +110,9 @@ The workflow executes the following steps:
 ```yaml
 
 - name: Setup SSH key
-
   run: |
-
     mkdir -p ~/.ssh
-
     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/your-key.pem
-
     chmod 600 ~/.ssh/your-key.pem
 
 ```
@@ -142,15 +120,11 @@ The workflow executes the following steps:
   
 
 7. **Setup master key**
-
    - Configures Rails credentials
-
 ```yaml
 
 - name: Setup master key
-
   run: echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
-
 ```
 
   
@@ -162,13 +136,9 @@ The workflow executes the following steps:
 ```yaml
 
 - name: Update deploy.yml with EC2 host
-
   run: |
-
     sed -i "/servers:/,/web:/{ n; s/- .*/    - ${{ secrets.EC2_HOST }}/; }" config/deploy.yml
-
 ```
-
   
 
 9. **Install Docker on server**
@@ -178,13 +148,9 @@ The workflow executes the following steps:
 ```yaml
 
 - name: Install Docker on server
-
   run: |
-
     ssh -i ~/.ssh/your-key.pem ubuntu@${{ secrets.EC2_HOST }} \
-
       "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu"
-
 ```
 
   
@@ -196,133 +162,63 @@ The workflow executes the following steps:
 ```yaml
 
 - name: Deploy with Kamal
-
   env:
-
     KAMAL_REGISTRY_PASSWORD: ${{ steps.login-ecr.outputs.docker_password_... }}
-
   run: kamal deploy
-
 ```
 
   
 Entire workflow
 
 ```yaml
-
 name: Deploy
-
 on:
-
-  push:
-
-    branches: [main]
-
-  
-
+    push:
+        branches: [main]
 jobs:
-
-  deploy:
-
-    runs-on: ubuntu-latest
-
-  
-
-    steps:
-
-      - name: Checkout code
-
-        uses: actions/checkout@v4
-
-  
-
-      - name: Set up Ruby
-
-        uses: ruby/setup-ruby@v1
-
-        with:
-
-          ruby-version: .ruby-version
-
-          bundler-cache: true
-
-  
-
-      - name: Install Kamal
-
-        run: gem install kamal
-
-  
-
-      - name: Configure AWS credentials
-
-        uses: aws-actions/configure-aws-credentials@v4
-
-        with:
-
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-          aws-region: us-east-1
-
-  
-
-      - name: Login to Amazon ECR
-
-        id: login-ecr
-
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Setup SSH key
-
-        run: |
-
-          mkdir -p ~/.ssh
-
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/kamal-server-key.pem
-
-          chmod 600 ~/.ssh/kamal-server-key.pem
-
-          cat >> ~/.ssh/config << EOF
-
-          Host *
-
-            StrictHostKeyChecking no
-
-            UserKnownHostsFile=/dev/null
-
-          EOF
-
-      - name: Setup master key
-
-        run: echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
-
-  
-
-      - name: Update deploy.yml with EC2 host
-
-        run: |
-
-          sed -i "/servers:/,/web:/{ n; s/- .*/    - ${{ secrets.EC2_HOST }}/; }" config/deploy.yml
-
-  
-
-      - name: Install Docker on server
-
-        run: |
-
-          ssh -i ~/.ssh/kamal-server-key.pem ubuntu@${{ secrets.EC2_HOST }} \
-
-            "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu"
-
-  
-
-      - name: Deploy with Kamal
-
-        env:
-
-          KAMAL_REGISTRY_PASSWORD: ${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+                uses: actions/checkout@v4
+            - name: Set up Ruby
+                uses: ruby/setup-ruby@v1
+                with:
+                    ruby-version: .ruby-version
+                    bundler-cache: true
+            - name: Install Kamal
+                run: gem install kamal
+            - name: Configure AWS credentials
+                uses: aws-actions/configure-aws-credentials@v4
+                with:
+                    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                    aws-region: us-east-1
+            - name: Login to Amazon ECR
+                id: login-ecr
+                uses: aws-actions/amazon-ecr-login@v2
+            - name: Setup SSH key
+                run: |
+                    mkdir -p ~/.ssh
+                    echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/kamal-server-key.pem
+                    chmod 600 ~/.ssh/kamal-server-key.pem
+                    cat >> ~/.ssh/config << EOF
+                    Host *
+                        StrictHostKeyChecking no
+                        UserKnownHostsFile=/dev/null
+                    EOF
+            - name: Setup master key
+                run: echo "${{ secrets.RAILS_MASTER_KEY }}" > config/master.key
+            - name: Update deploy.yml with EC2 host
+                run: |
+                    sed -i "/servers:/,/web:/{ n; s/- .*/    - ${{ secrets.EC2_HOST }}/; }" config/deploy.yml
+            - name: Install Docker on server
+                run: |
+                    ssh -i ~/.ssh/kamal-server-key.pem ubuntu@${{ secrets.EC2_HOST }} \
+                        "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu"
+            - name: Deploy with Kamal
+                env:
+                    KAMAL_REGISTRY_PASSWORD: ${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}
 
         run: kamal deploy
 ```
@@ -342,7 +238,7 @@ jobs:
    ```
 
 4. GitHub Actions automatically deploys to staging
-5. Verify at: <http://ec2-34-226-234-69.compute-1.amazonaws.com>
+5. Verify at the staging server URL
 
 ### Deploying to Production
 
@@ -355,9 +251,7 @@ jobs:
    ```
 
 2. GitHub Actions automatically deploys to production (2 servers)
-3. Verify at:
-   - <http://ec2-98-93-202-251.compute-1.amazonaws.com>
-   - <http://ec2-3-236-235-204.compute-1.amazonaws.com>
+3. Verify at the production server URLs
 
 ### Manual Workflow Trigger
 
@@ -368,6 +262,51 @@ If you need to deploy without pushing:
 3. Click **Run workflow**
 4. Select branch (`main` for production or `stage` for staging)
 5. Click **Run workflow**
+
+## Rollback on Deployment Failure
+
+The workflow includes automatic rollback functionality. If the deployment step fails:
+
+1. **Automatic Detection**: The workflow detects deployment failure
+2. **Rollback Execution**: Automatically executes `kamal rollback` command
+3. **Previous Version**: Restores the last successful deployment
+4. **Notification**: Logs rollback action in GitHub Actions output
+
+### Manual Rollback via GitHub Actions
+
+A dedicated rollback workflow (`.github/workflows/rollback.yml`) allows manual rollback through the GitHub interface:
+
+**Steps to trigger manual rollback:**
+
+1. Go to **Actions** tab in your repository
+2. Select **Rollback** workflow
+3. Click **Run workflow**
+4. Select parameters:
+   - **Environment**: Choose `staging` or `production`
+   - **Version** (optional): Enter commit SHA to rollback to a specific version, or leave empty for previous version
+5. Click **Run workflow**
+
+**The rollback workflow will:**
+- Authenticate with AWS and ECR
+- Configure the selected environment
+- Execute rollback to specified or previous version
+- Verify the rollback status
+- Show deployment details after rollback
+
+### Manual Rollback via Command Line
+
+If you need to manually rollback from your local machine:
+
+```bash
+# Rollback to previous version (staging)
+kamal rollback -d staging
+
+# Rollback to previous version (production)
+kamal rollback -d production
+
+# Rollback to specific version
+kamal rollback -d production --version <commit-sha>
+```
 
 ## Verify Deployment
 
@@ -392,77 +331,6 @@ kamal app details -d production
 kamal app exec -d staging 'bash'
 ```
 
-## Environment Configuration
-
-  
-
-You can customize `.github/workflows/deploy.yml` to fit your needs:
-
-  
-
-### Change Target Branch
-
-```yaml
-
-on:
-
-  push:
-
-    branches: [production]  # Deploy from production branch
-
-```
-
-  
-
-### Add Environment Variables
-
-```yaml
-
-- name: Deploy with Kamal
-
-  env:
-
-    KAMAL_REGISTRY_PASSWORD: ${{ steps.login-ecr.outputs.docker_password_... }}
-
-    CUSTOM_VAR: ${{ secrets.CUSTOM_VAR }}
-
-  run: kamal deploy
-
-```
-
-  
-
-### Skip Docker Installation
-
-If Docker is already installed on your servers, remove this step:
-
-```yaml
-
-- name: Install Docker on server
-
-  # Remove this entire step
-
-```
-
-  
-
-### Use Different AWS Region
-
-Update the AWS region in the workflow:
-
-```yaml
-
-- name: Configure AWS credentials
-
-  uses: aws-actions/configure-aws-credentials@v4
-
-  with:
-
-    aws-region: eu-west-1  # Change to your region
-
-```
-
-  
 
 ## Monitoring and Logs
 
@@ -472,12 +340,6 @@ Update the AWS region in the workflow:
 - Click on workflow runs for detailed logs
 - See which environment was deployed and when
 
-### Environment URLs
-
-Each environment has a registered URL in GitHub:
-
-- **Staging**: http://ec2-34-226-234-69.compute-1.amazonaws.com
-- **Production**: http://ec2-98-93-202-251.compute-1.amazonaws.com
 
 ### Application Logs
 
@@ -489,16 +351,25 @@ kamal app logs -d staging --follow
 kamal app logs -d production --tail 100
 
 # View logs for specific server
-kamal app logs -d production --hosts ec2-98-93-202-251.compute-1.amazonaws.com
+kamal app logs -d production --hosts <server-hostname>
 ```
 
-### Deployment History
+## Docker Image Build Process
 
-- Go to **Environments** in repository settings
-- Each environment shows deployment history
-- View who deployed, when, and the git commit
+The Docker image is built during the **Deploy with Kamal** step. Here's what happens:
 
-## Key Features
+### Build Location
+- Image is built on the **GitHub Actions runner** (ubuntu-latest VM)
+- Not built on the target EC2 servers
+
+### Build Process
+1. **Kamal reads Dockerfile**: Uses the project's Dockerfile to build the image
+2. **Build context**: Includes all application code and dependencies
+3. **Tagging**: Image is tagged with git commit SHA for version tracking
+4. **Push to ECR**: Built image is pushed to Amazon ECR registry
+5. **Pull on servers**: Each EC2 server pulls the image from ECR
+6. **Deploy**: Containers are started from the pulled image
+
 
 ### Multi-Environment Support
 
@@ -506,24 +377,7 @@ kamal app logs -d production --hosts ec2-98-93-202-251.compute-1.amazonaws.com
 ✅ Environment-specific secrets management  
 ✅ Branch-based automatic deployment
 
-### Multi-Server Deployment
 
-✅ Deploy to multiple servers simultaneously  
-✅ Automatic health checks per server  
-✅ Rollback if any server fails
-
-### Security
-
-✅ Secrets managed through GitHub Environments  
-✅ No credentials in code  
-✅ Environment-specific access control  
-✅ Optional manual approval for production
-
-### Zero-Downtime Deployments
-
-✅ Rolling deployments via kamal-proxy  
-✅ Health checks before switching traffic  
-✅ Previous containers remain active if deployment fails
 
 ## Required GitHub Actions
 
@@ -533,10 +387,3 @@ The workflow uses these actions:
 - `ruby/setup-ruby@v1` - Ruby environment setup
 - `aws-actions/configure-aws-credentials@v4` - AWS authentication
 - `aws-actions/amazon-ecr-login@v2` - ECR authentication
-
-## Deployment Performance
-
-- **Average deployment time**: ~5 minutes per environment
-- **Simultaneous deployment**: All servers in the environment deploy in parallel
-- **Zero downtime**: Rolling updates ensure the application remains available
-- **Automatic rollback**: If any server fails health checks, deployment stops
