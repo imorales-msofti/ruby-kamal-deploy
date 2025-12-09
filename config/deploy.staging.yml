@@ -3,10 +3,11 @@
 
 servers:
   web:
-    - ec2-34-226-234-69.compute-1.amazonaws.com
+    - ec2-98-93-178-197.compute-1.amazonaws.com
 
 env:
   clear:
     RAILS_ENV: staging
+    KAMAL_VERSION: <%= `git rev-parse --short HEAD`.strip %>
   secret:
     - SECRET_KEY_BASE
