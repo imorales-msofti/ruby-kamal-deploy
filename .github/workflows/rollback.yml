@@ -4,21 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to rollback'
+        description: "Environment to rollback"
         required: true
         type: choice
         options:
           - staging
           - production
       version:
-        description: 'Version (commit SHA or tag) to rollback to - REQUIRED (check ECR for available versions)'
+        description: "Version (commit SHA or tag) to rollback to - REQUIRED (check ECR for available versions)"
         required: true
         type: string
 
 jobs:
   rollback:
     runs-on: ubuntu-latest
-    environment: 
+    environment:
       name: ${{ inputs.environment }}
 
     steps:
@@ -76,10 +76,10 @@ jobs:
           ENV="${{ inputs.environment }}"
           SERVERS="${{ steps.select-servers.outputs.servers }}"
           CONFIG_FILE="config/deploy.${{ inputs.environment }}.yml"
-          
+
           # Update environment-specific config file
           echo "Updating $CONFIG_FILE with servers..."
-          
+
           # Create servers section
           echo "servers:" > ${CONFIG_FILE}.tmp
           echo "  web:" >> ${CONFIG_FILE}.tmp
@@ -87,17 +87,17 @@ jobs:
             echo "  - $server" >> ${CONFIG_FILE}.tmp
           done
           echo "" >> ${CONFIG_FILE}.tmp
-          
+
           # Add env section
           echo "env:" >> ${CONFIG_FILE}.tmp
           echo "  clear:" >> ${CONFIG_FILE}.tmp
           echo "    RAILS_ENV: $ENV" >> ${CONFIG_FILE}.tmp
           echo "  secret:" >> ${CONFIG_FILE}.tmp
           echo "    - SECRET_KEY_BASE" >> ${CONFIG_FILE}.tmp
-          
+
           # Replace file
           mv ${CONFIG_FILE}.tmp $CONFIG_FILE
-          
+
           echo "Updated $CONFIG_FILE:"
           cat $CONFIG_FILE
 
@@ -107,39 +107,48 @@ jobs:
           echo "KAMAL_REGISTRY_PASSWORD=${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}" > .kamal/secrets-common
           echo "SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}" >> .kamal/secrets-common
 
-      - name: Get current and previous versions
+      - name: Get available versions from ECR
         id: get-versions
         run: |
-          echo "Getting deployment history..."
-          
-          # Get the list of recent versions from the servers
-          CURRENT_VERSION=$(kamal app version -d ${{ inputs.environment }} 2>/dev/null | head -1 || echo "")
-          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $CURRENT_VERSION"
-          
-          # If specific version provided, use it; otherwise we'll need to get previous from containers
-          if [[ -n "${{ inputs.version }}" ]]; then
-            echo "target_version=${{ inputs.version }}" >> $GITHUB_OUTPUT
-            echo "Target version: ${{ inputs.version }}"
-          else
-            echo "No specific version provided, will rollback to previous deployment"
-          fi
+          echo "Getting available versions from ECR..."
+
+          # List images in ECR repository, sorted by push date
+          IMAGES=$(aws ecr describe-images \
+            --repository-name kamal-quick-start \
+            --region us-east-1 \
+            --query 'sort_by(imageDetails,& imagePushedAt)[*].[imageTags[0],imagePushedAt]' \
+            --output text | tail -10 || echo "Unable to fetch ECR images")
+
+          echo "Last 10 versions available in ECR:"
+          echo "$IMAGES"
+
+          # Get current version from servers
+          echo ""
+          echo "Checking current version deployed..."
+          CURRENT_VERSION=$(kamal app version -d ${{ inputs.environment }} 2>/dev/null | grep -oE '[a-f0-9]{7,40}' | head -1 || echo "unknown")
+          echo "current_version=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+          echo "Current deployed version: ${CURRENT_VERSION}"
+
+          echo ""
+          echo "Target version for rollback: ${{ inputs.version }}"
 
       - name: Execute Rollback
         run: |
-          echo "Rolling back ${{ inputs.environment }} environment..."
-          
-          if [[ -n "${{ inputs.version }}" ]]; then
-            echo "Rolling back to specific version: ${{ inputs.version }}"
-            kamal rollback ${{ inputs.version }} -d ${{ inputs.environment }}
+          ENV="${{ inputs.environment }}"
+          VERSION="${{ inputs.version }}"
+
+          echo "Rolling back ${ENV} environment to version ${VERSION}..."
+
+          if [[ -n "${VERSION}" ]]; then
+            echo "Executing rollback command..."
+            kamal rollback "${VERSION}" -d "${ENV}"
           else
-            echo "⚠️  Please specify a version to rollback to."
-            echo "You can find available versions by checking your ECR repository or deployment history."
+            echo "ERROR: Version is required for rollback"
             echo "Current version: ${{ steps.get-versions.outputs.current_version }}"
             exit 1
           fi
-          
-          echo "✅ Rollback completed successfully!"
+
+          echo "Rollback completed successfully"
 
       - name: Verify rollback
         run: |

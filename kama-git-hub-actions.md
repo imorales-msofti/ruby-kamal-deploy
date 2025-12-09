@@ -279,16 +279,36 @@ A dedicated rollback workflow (`.github/workflows/rollback.yml`) allows manual r
 **Steps to trigger manual rollback:**
 
 1. **Find the version to rollback to**:
-   - Go to AWS ECR console and check available image tags (commit SHAs)
-   - Or check GitHub commit history for the SHA you want to restore
+   
+   **Option A: Check ECR via AWS Console**
+   - Go to AWS ECR console → `kamal-quick-start` repository
+   - View available image tags (commit SHAs) with push dates
+   
+   **Option B: Check via AWS CLI**
+   ```bash
+   aws ecr describe-images \
+     --repository-name kamal-quick-start \
+     --region us-east-1 \
+     --query 'sort_by(imageDetails,& imagePushedAt)[*].[imageTags[0],imagePushedAt]' \
+     --output table
+   ```
+   
+   **Option C: Check GitHub commit history**
+   - Go to your repository commits
+   - Copy the SHA of the commit you want to restore
 
 2. Go to **Actions** tab in your repository
 3. Select **Rollback** workflow
 4. Click **Run workflow**
-5. Select parameters:
+5. The workflow will show you:
+   - Last 10 versions available in ECR
+   - Current deployed version on servers
+6. Select parameters:
    - **Environment**: Choose `staging` or `production`
-   - **Version** (required): Enter the commit SHA or tag to rollback to
-6. Click **Run workflow**
+   - **Version** (required): Enter the commit SHA to rollback to
+7. Click **Run workflow**
+
+**Note**: The workflow automatically displays available versions from ECR before executing the rollback, so you can verify the target version exists.
 
 **The rollback workflow will:**
 - Authenticate with AWS and ECR
