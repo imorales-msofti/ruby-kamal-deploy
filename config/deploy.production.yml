@@ -9,5 +9,6 @@ servers:
 env:
   clear:
     RAILS_ENV: production
+    KAMAL_VERSION: <%= `git rev-parse --short HEAD`.strip %>
   secret:
     - SECRET_KEY_BASE
