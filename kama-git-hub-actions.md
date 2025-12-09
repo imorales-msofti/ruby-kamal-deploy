@@ -278,13 +278,17 @@ A dedicated rollback workflow (`.github/workflows/rollback.yml`) allows manual r
 
 **Steps to trigger manual rollback:**
 
-1. Go to **Actions** tab in your repository
-2. Select **Rollback** workflow
-3. Click **Run workflow**
-4. Select parameters:
+1. **Find the version to rollback to**:
+   - Go to AWS ECR console and check available image tags (commit SHAs)
+   - Or check GitHub commit history for the SHA you want to restore
+
+2. Go to **Actions** tab in your repository
+3. Select **Rollback** workflow
+4. Click **Run workflow**
+5. Select parameters:
    - **Environment**: Choose `staging` or `production`
-   - **Version** (optional): Enter commit SHA to rollback to a specific version, or leave empty for previous version
-5. Click **Run workflow**
+   - **Version** (required): Enter the commit SHA or tag to rollback to
+6. Click **Run workflow**
 
 **The rollback workflow will:**
 - Authenticate with AWS and ECR
