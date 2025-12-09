@@ -11,8 +11,8 @@ on:
           - staging
           - production
       version:
-        description: 'Specific version (commit SHA) to rollback to (optional, leave empty for previous version)'
-        required: false
+        description: 'Version (commit SHA or tag) to rollback to - REQUIRED (check ECR for available versions)'
+        required: true
         type: string
 
 jobs:
@@ -107,16 +107,36 @@ jobs:
           echo "KAMAL_REGISTRY_PASSWORD=${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}" > .kamal/secrets-common
           echo "SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}" >> .kamal/secrets-common
 
+      - name: Get current and previous versions
+        id: get-versions
+        run: |
+          echo "Getting deployment history..."
+          
+          # Get the list of recent versions from the servers
+          CURRENT_VERSION=$(kamal app version -d ${{ inputs.environment }} 2>/dev/null | head -1 || echo "")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+          
+          # If specific version provided, use it; otherwise we'll need to get previous from containers
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "target_version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+            echo "Target version: ${{ inputs.version }}"
+          else
+            echo "No specific version provided, will rollback to previous deployment"
+          fi
+
       - name: Execute Rollback
         run: |
           echo "Rolling back ${{ inputs.environment }} environment..."
           
           if [[ -n "${{ inputs.version }}" ]]; then
             echo "Rolling back to specific version: ${{ inputs.version }}"
-            kamal rollback -d ${{ inputs.environment }} --version ${{ inputs.version }}
+            kamal rollback ${{ inputs.version }} -d ${{ inputs.environment }}
           else
-            echo "Rolling back to previous version"
-            kamal rollback -d ${{ inputs.environment }}
+            echo "⚠️  Please specify a version to rollback to."
+            echo "You can find available versions by checking your ECR repository or deployment history."
+            echo "Current version: ${{ steps.get-versions.outputs.current_version }}"
+            exit 1
           fi
           
           echo "✅ Rollback completed successfully!"
