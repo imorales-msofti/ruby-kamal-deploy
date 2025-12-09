@@ -1,31 +1,27 @@
-name: Deploy
+name: Rollback
 
 on:
-  push:
-    branches: 
-      - main
-      - stage
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+      version:
+        description: 'Specific version (commit SHA) to rollback to (optional, leave empty for previous version)'
+        required: false
+        type: string
 
 jobs:
-  deploy:
+  rollback:
     runs-on: ubuntu-latest
     environment: 
-      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
-      url: ${{ github.ref == 'refs/heads/main' && 'http://ec2-98-93-202-251.compute-1.amazonaws.com' || 'http://ec2-34-226-234-69.compute-1.amazonaws.com' }}
+      name: ${{ inputs.environment }}
 
     steps:
-      - name: Detect environment
-        id: detect-env
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-            echo "config_file=production" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/stage" ]]; then
-            echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "config_file=staging" >> $GITHUB_OUTPUT
-          fi
-          echo "Deploying to: ${{ github.ref }} -> environment"
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -62,7 +58,7 @@ jobs:
 
       - name: Setup master key
         run: |
-          if [[ "${{ steps.detect-env.outputs.environment }}" == "staging" ]]; then
+          if [[ "${{ inputs.environment }}" == "staging" ]]; then
             mkdir -p config/credentials
             echo "${{ secrets.RAILS_MASTER_KEY }}" > config/credentials/staging.key
           else
@@ -73,14 +69,13 @@ jobs:
         id: select-servers
         run: |
           echo "servers=${{ secrets.EC2_HOSTS }}" >> $GITHUB_OUTPUT
-          echo "Deploying to servers: ${{ secrets.EC2_HOSTS }}"
+          echo "Rolling back on servers: ${{ secrets.EC2_HOSTS }}"
 
       - name: Update deploy config with EC2 hosts
         run: |
-          ENV="${{ steps.detect-env.outputs.environment }}"
+          ENV="${{ inputs.environment }}"
           SERVERS="${{ steps.select-servers.outputs.servers }}"
-          CONFIG_FILE="config/deploy.${{ steps.detect-env.outputs.config_file }}.yml"
-
+          CONFIG_FILE="config/deploy.${{ inputs.environment }}.yml"
           
           # Update environment-specific config file
           echo "Updating $CONFIG_FILE with servers..."
@@ -106,34 +101,27 @@ jobs:
           echo "Updated $CONFIG_FILE:"
           cat $CONFIG_FILE
 
-      - name: Check and install Docker on servers (if needed)
-        run: |
-          SERVERS="${{ steps.select-servers.outputs.servers }}"
-          for server in $SERVERS; do
-            echo "Checking Docker on $server..."
-            if ! ssh -i ~/.ssh/kamal-server-key.pem ubuntu@$server "docker --version" 2>/dev/null; then
-              echo "Installing Docker on $server..."
-              ssh -i ~/.ssh/kamal-server-key.pem ubuntu@$server \
-                "curl -fsSL https://get.docker.com | sudo sh && sudo usermod -aG docker ubuntu && sudo systemctl restart docker && sudo chmod 666 /var/run/docker.sock"
-            else
-              echo "Docker already installed on $server"
-            fi
-          done
-
       - name: Setup Kamal secrets
         run: |
           mkdir -p .kamal
           echo "KAMAL_REGISTRY_PASSWORD=${{ steps.login-ecr.outputs.docker_password_922126656512_dkr_ecr_us_east_1_amazonaws_com }}" > .kamal/secrets-common
           echo "SECRET_KEY_BASE=${{ secrets.SECRET_KEY_BASE }}" >> .kamal/secrets-common
 
-      - name: Deploy with Kamal
-        id: deploy
+      - name: Execute Rollback
         run: |
-          echo "Deploying to ${{ steps.detect-env.outputs.environment }} environment..."
-          kamal deploy -d ${{ steps.detect-env.outputs.config_file }}
+          echo "Rolling back ${{ inputs.environment }} environment..."
+          
+          if [[ -n "${{ inputs.version }}" ]]; then
+            echo "Rolling back to specific version: ${{ inputs.version }}"
+            kamal rollback -d ${{ inputs.environment }} --version ${{ inputs.version }}
+          else
+            echo "Rolling back to previous version"
+            kamal rollback -d ${{ inputs.environment }}
+          fi
+          
+          echo "✅ Rollback completed successfully!"
 
-      - name: Rollback on failure
-        if: failure() && steps.deploy.outcome == 'failure'
+      - name: Verify rollback
         run: |
-          echo "Deployment failed, rolling back to previous version..."
-          kamal rollback -d ${{ steps.detect-env.outputs.config_file }}
+          echo "Verifying deployment status..."
+          kamal app details -d ${{ inputs.environment }}
