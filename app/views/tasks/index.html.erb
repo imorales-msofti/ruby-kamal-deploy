@@ -1,0 +1,61 @@
+<div style="min-height: 100vh; font-family: system-ui, -apple-system, sans-serif; background: #f8f9fa; padding: 2rem;">
+  <div style="max-width: 600px; margin: 0 auto;">
+    <!-- Header with deployment info -->
+    <div style="background: white; padding: 1.5rem; border: 1px solid #e0e0e0; border-radius: 5px; margin-bottom: 1.5rem;">
+      <h1 style="font-size: 2rem; margin: 0 0 1rem 0; color: #333;">📝 Todo List</h1>
+      <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #666; border-top: 1px solid #eee; padding-top: 1rem;">
+        <div><strong>Environment:</strong> <%= Rails.env.upcase %></div>
+        <div><strong>Server:</strong> <%= Socket.gethostname.split('.').first %></div>
+        <div><strong>Version:</strong> <%= ENV['KAMAL_VERSION'] || ENV['GIT_COMMIT_SHA'] || 'dev' %></div>
+      </div>
+    </div>
+
+    <!-- Add new task form -->
+    <div style="background: white; padding: 1.5rem; border: 1px solid #e0e0e0; border-radius: 5px; margin-bottom: 1.5rem;">
+      <%= form_with model: @task, url: tasks_path, local: true do |f| %>
+        <div style="display: flex; gap: 0.5rem;">
+          <%= f.text_field :title, 
+              placeholder: "Add a new task...", 
+              required: true,
+              style: "flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 5px; font-size: 1rem;" %>
+          <%= f.submit "Add", 
+              style: "padding: 0.75rem 1.5rem; background: #333; color: white; border: none; border-radius: 5px; font-size: 1rem; cursor: pointer;" %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- Tasks list -->
+    <div style="background: white; padding: 1.5rem; border: 1px solid #e0e0e0; border-radius: 5px;">
+      <% if @tasks.any? %>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <% @tasks.each do |task| %>
+            <li style="display: flex; align-items: center; padding: 0.75rem; border-bottom: 1px solid #f0f0f0; gap: 0.75rem;">
+              <%= form_with url: toggle_task_path(task), method: :patch, local: true, style: "margin: 0;" do %>
+                <%= button_tag type: "submit", style: "background: none; border: none; padding: 0; cursor: pointer; font-size: 1.5rem;" do %>
+                  <%= task.completed ? "✅" : "⬜" %>
+                <% end %>
+              <% end %>
+              
+              <span style="flex: 1; font-size: 1rem; color: <%= task.completed ? '#999' : '#333' %>; text-decoration: <%= task.completed ? 'line-through' : 'none' %>;">
+                <%= task.title %>
+              </span>
+              
+              <%= button_to "🗑️", task_path(task), method: :delete, 
+                  data: { turbo_confirm: "Are you sure?" },
+                  style: "background: none; border: none; padding: 0; cursor: pointer; font-size: 1.2rem; opacity: 0.5; transition: opacity 0.2s;" %>
+            </li>
+          <% end %>
+        </ul>
+        
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f0f0f0; text-align: center; color: #999; font-size: 0.9rem;">
+          <%= @tasks.count %> <%= @tasks.count == 1 ? 'task' : 'tasks' %> 
+          (<%= @tasks.where(completed: true).count %> completed)
+        </div>
+      <% else %>
+        <p style="text-align: center; color: #999; padding: 2rem; margin: 0;">
+          No tasks yet. Add your first task above! 🎯
+        </p>
+      <% end %>
+    </div>
+  </div>
+</div>
