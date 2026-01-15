@@ -7,7 +7,7 @@ class TasksController < ApplicationController
   def create
     @task = Task.new(task_params)
     if @task.save
-      redirect_to root_path, notice: 'Task created successfully'
+      redirect_to root_path, notice: "Task created successfully"
     else
       @tasks = Task.order(created_at: :desc)
       render :index, status: :unprocessable_entity
@@ -23,7 +23,7 @@ class TasksController < ApplicationController
   def destroy
     @task = Task.find(params[:id])
     @task.destroy
-    redirect_to root_path, notice: 'Task deleted successfully'
+    redirect_to root_path, notice: "Task deleted successfully"
   end
 
   private

@@ -24,3 +24,7 @@ ssh:
   user: ubuntu
   keys:
     - ~/.ssh/kamal-server-key.pem
+
+# Use port 81 to coexist with other web apps on port 80
+proxy:
+  host_port: 81

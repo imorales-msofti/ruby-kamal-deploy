@@ -11,3 +11,7 @@ env:
     KAMAL_VERSION: <%= `git rev-parse --short HEAD`.strip %>
   secret:
     - SECRET_KEY_BASE
+
+# Use port 81 to coexist with other web apps on port 80
+proxy:
+  host_port: 81
