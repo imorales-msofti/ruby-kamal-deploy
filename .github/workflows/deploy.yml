@@ -1,30 +1,46 @@
 name: Deploy
 
 on:
+  # Manual deployment - choose environment from GitHub UI
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+  
+  # Auto-deploy to production when creating release tags (v1.0.0, v2.0.0, etc.)
   push:
-    branches: 
-      - main
-      - stage
+    tags:
+      - 'v*.*.*'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: 
-      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
-      url: ${{ github.ref == 'refs/heads/main' && 'http://ec2-98-93-202-251.compute-1.amazonaws.com' || 'http://ec2-34-226-234-69.compute-1.amazonaws.com' }}
+      name: ${{ inputs.environment || 'production' }}
+      url: ${{ inputs.environment == 'staging' && 'http://ec2-34-226-234-69.compute-1.amazonaws.com' || 'http://ec2-98-93-202-251.compute-1.amazonaws.com' }}
 
     steps:
       - name: Detect environment
         id: detect-env
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-            echo "config_file=production" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/stage" ]]; then
-            echo "environment=staging" >> $GITHUB_OUTPUT
-            echo "config_file=staging" >> $GITHUB_OUTPUT
+          # Manual workflow_dispatch takes precedence
+          if [[ -n "${{ inputs.environment }}" ]]; then
+            ENV="${{ inputs.environment }}"
+          # Tag push goes to production
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            ENV="production"
+          else
+            ENV="production"
           fi
-          echo "Deploying to: ${{ github.ref }} -> environment"
+          
+          echo "environment=${ENV}" >> $GITHUB_OUTPUT
+          echo "config_file=${ENV}" >> $GITHUB_OUTPUT
+          echo "Deploying to: ${ENV}"
 
       - name: Checkout code
         uses: actions/checkout@v4
