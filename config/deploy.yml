@@ -29,5 +29,4 @@ ssh:
 
 # Use default HTTP port 80
 proxy:
-  host: 0.0.0.0:80
   app_port: 3000
