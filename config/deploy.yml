@@ -30,3 +30,5 @@ ssh:
 # Use port 81 to coexist with other web apps on port 80
 proxy:
   host: 0.0.0.0:81
+  # Publish port 81 on the host to make it accessible
+  publish: "81:81"
