@@ -360,7 +360,7 @@ resource "aws_instance" "app_server" {
 }
 ```
 
-### Ubuntu AMI Data Source
+### Ubuntu AMI Data Source 
 
 Automatically selects the latest Ubuntu 24.04 LTS:
 
