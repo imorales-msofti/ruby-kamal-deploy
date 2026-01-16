@@ -16,6 +16,8 @@ registry:
 env:
   clear:
     RAILS_ENV: production
+  secret:
+    - SECRET_KEY_BASE
 
 builder:
   arch: amd64
