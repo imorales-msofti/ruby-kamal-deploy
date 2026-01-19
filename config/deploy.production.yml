@@ -3,8 +3,7 @@
 
 servers:
   web:
-    - ec2-98-80-96-138.compute-1.amazonaws.com
-    - ec2-3-236-9-129.compute-1.amazonaws.com
+    - ec2-98-92-58-253.compute-1.amazonaws.com
 
 env:
   clear:
@@ -12,7 +11,3 @@ env:
     KAMAL_VERSION: <%= `git rev-parse --short HEAD`.strip %>
   secret:
     - SECRET_KEY_BASE
-
-# Use port 81 to coexist with other web apps on port 80
-proxy:
-  host: 0.0.0.0:81
