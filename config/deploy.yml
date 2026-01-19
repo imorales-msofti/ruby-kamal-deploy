@@ -4,7 +4,7 @@ image: kamal-app
 servers:
   web:
   - ec2-98-92-58-253.compute-1.amazonaws.com
-
+  
 registry:
   server: 922126656512.dkr.ecr.us-east-1.amazonaws.com
   username: AWS
